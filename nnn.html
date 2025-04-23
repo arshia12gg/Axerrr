@@ -1,0 +1,76 @@
+const express = require('express');
+const fileUpload = require('express-fileupload');
+const fs = require('fs');
+const path = require('path');
+const cors = require('cors');
+
+const app = express();
+
+// Middlewareها
+app.use(cors());
+app.use(fileUpload({
+  limits: { fileSize: 50 * 1024 * 1024 }, // حداکثر 50 مگابایت
+  abortOnLimit: true
+}));
+app.use(express.static('public'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ایجاد پوشه آپلود اگر وجود نداشته باشد
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Route برای آپلود
+app.post('/upload', (req, res) => {
+  try {
+    if (!req.files || !req.files.htmlFile) {
+      return res.status(400).json({ error: 'هیچ فایلی آپلود نشده است.' });
+    }
+
+    const file = req.files.htmlFile;
+    const allowedTypes = ['text/html'];
+    const allowedExtensions = ['.html', '.htm'];
+    const fileExt = path.extname(file.name).toLowerCase();
+
+    // اعتبارسنجی فایل
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ error: 'نوع فایل نامعتبر است.' });
+    }
+
+    if (!allowedExtensions.includes(fileExt)) {
+      return res.status(400).json({ error: 'فقط فایل‌های HTML قابل قبول هستند.' });
+    }
+
+    const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    const filePath = path.join(uploadDir, fileName);
+
+    file.mv(filePath, (err) => {
+      if (err) {
+        console.error('خطا در ذخیره فایل:', err);
+        return res.status(500).json({ error: 'خطا در ذخیره فایل.' });
+      }
+
+      const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${fileName}`;
+      res.json({ 
+        success: true,
+        url: fileUrl,
+        filename: file.name
+      });
+    });
+  } catch (error) {
+    console.error('خطای سرور:', error);
+    res.status(500).json({ error: 'خطای سرور.' });
+  }
+});
+
+// Route اصلی
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`سرور در حال اجرا روی پورت ${PORT}...`);
+  console.log(`آدرس دسترسی: http://localhost:${PORT}`);
+});
