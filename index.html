@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>تبدیل فایل HTML به لینک</title>
+</head>
+<body>
+    <h1>فایل HTML خود را آپلود کنید</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="htmlFile" accept=".html,.htm">
+        <button type="submit">آپلود و دریافت لینک</button>
+    </form>
+    
+    <div id="result" style="margin-top: 20px;"></div>
+
+    <script>
+        const form = document.querySelector('form');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            document.getElementById('result').innerHTML = `
+                <p>لینک فایل شما:</p>
+                <a href="${result.url}" target="_blank">${result.url}</a>
+            `;
+        });
+    </script>
+</body>
+</html>
